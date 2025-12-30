@@ -1,0 +1,121 @@
+<!-- Contenedor Principal -->
+<div class="dashboard-container">
+
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1>DASHBOARD DE RESULTADOS</h1>
+      </div>
+      <div class="header-right">
+        <button class="btn-refresh"
+                (click)="cargarEstadisticas()"
+                [disabled]="isLoading"
+                [class.loading]="isLoading">
+          🔄 {{ isLoading ? 'Cargando...' : 'Actualizar' }}
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Contenido Principal -->
+  <main class="main-content">
+
+    <!-- Estados -->
+    @if (isLoading) {
+      <div class="loading-state">
+        <div class="spinner">⏳</div>
+        <p>Cargando datos del dashboard...</p>
+      </div>
+    }
+
+    @if (hasError && !isLoading) {
+      <div class="error-state">
+        <div class="error-icon">❌</div>
+        <h3>Error al cargar datos</h3>
+        <p>{{ errorMessage }}</p>
+        <button class="btn-retry" (click)="cargarEstadisticas()">Reintentar</button>
+      </div>
+    }
+
+    <!-- Contenido principal cuando hay datos -->
+    @if (!isLoading && !hasError) {
+      <div class="content-wrapper">
+
+        <!-- ========== ESTADÍSTICAS PRINCIPALES ========== -->
+        <section class="stats-section">
+          <div class="stats-grid">
+
+            <!-- Total Registros -->
+            <div class="stat-card total">
+              <div class="stat-title">TOTAL REGISTROS</div>
+              <div class="stat-value">{{ estadisticas.totalRegistros.toLocaleString() }}</div>
+              <div class="stat-subtitle">Procesados correctamente</div>
+            </div>
+
+            <!-- Exactos -->
+            <div class="stat-card exactos">
+              <div class="stat-title">EXACTOS (ALTA/VERDE)</div>
+              <div class="stat-value">{{ estadisticas.exactos.toLocaleString() }}</div>
+              <div class="stat-percentage">{{ porcentajeExactos }}</div>
+            </div>
+
+            <!-- Revisión -->
+            <div class="stat-card revision">
+              <div class="stat-title">REVISIÓN (BAJO/MUY BAJO)</div>
+              <div class="stat-value">{{ estadisticas.revision.toLocaleString() }}</div>
+              <div class="stat-percentage">{{ porcentajeRevision }}</div>
+            </div>
+
+            <!-- Fallidos -->
+            <div class="stat-card fallidos">
+              <div class="stat-title">FALLIDOS</div>
+              <div class="stat-value">{{ estadisticas.fallidos.toLocaleString() }}</div>
+              <div class="stat-percentage">{{ porcentajeFallidos }}</div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ========== SECCIÓN DE CALIDAD ========== -->
+        <section class="quality-section">
+          <h2 class="section-title">Calidad de Geocodificación</h2>
+
+          <div class="chart-container">
+            @if (datosCargados && estadisticas.totalRegistros > 0) {
+              <div class="chart-wrapper">
+                <canvas id="graficaCalidad"></canvas>
+              </div>
+            } @else {
+              <div class="empty-chart">
+                <div class="empty-icon">📊</div>
+                <h4>Sin datos para mostrar</h4>
+                <p>No hay datos disponibles para la gráfica</p>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- ========== ACCIONES ========== -->
+        <section class="actions-section">
+          <div class="action-buttons">
+            <button class="btn-action btn-map"
+                    (click)="visualizarEnMapa()"
+                    [disabled]="!datosCargados || estadisticas.totalRegistros === 0">
+              <span class="btn-icon">🗺️</span>
+              <span class="btn-text">Visualizar en Mapa</span>
+            </button>
+
+            <button class="btn-action btn-report"
+                    (click)="descargarReporteDirecto()"
+                    [disabled]="!datosCargados || estadisticas.totalRegistros === 0">
+              <span class="btn-icon">📥</span>
+              <span class="btn-text">Descargar Reporte</span>
+            </button>
+          </div>
+        </section>
+
+      </div>
+    }
+  </main>
+</div>

@@ -1,0 +1,202 @@
+<div class="dashboard-container" [class.sidebar-open]="sidebarOpen">
+  <header class="dashboard-header">
+    <div class="header-main">
+      <div class="header-left">
+        <h1>GEOCODIFICADOR</h1>
+      </div>
+    </div>
+  </header>
+
+  <div *ngIf="cargando" class="loading-overlay">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <h3>Cargando datos...</h3>
+      <p>Obteniendo registros de la base de datos</p>
+      <div class="loading-progress">
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="error && !cargando" class="error-message">
+    <div class="error-content">
+      <div class="error-icon">⚠️</div>
+      <div>
+        <h3>Error al cargar datos</h3>
+        <p>{{ error }}</p>
+        <button (click)="cargarDirecciones()" class="btn-retry">
+          <span class="btn-icon">🔄</span>
+          Reintentar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!cargando && direccionesProcesadas.length > 0" class="main-content">
+    <div class="table-container">
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="sticky-col index-col">#</th>
+
+              <th *ngIf="columnasVisibles['id_salida']"
+                  (click)="ordenarPor('id_salida')"
+                  [class.sorted]="columnaOrden === 'id_salida'"
+                  class="sortable">
+                ID Salida
+                <span class="sort-icon">{{ columnaOrden === 'id_salida' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
+              </th>
+
+              <th *ngIf="columnasVisibles['id_entrada']"
+                  (click)="ordenarPor('id_entrada')"
+                  [class.sorted]="columnaOrden === 'id_entrada'"
+                  class="sortable">
+                ID Entrada
+                <span class="sort-icon">{{ columnaOrden === 'id_entrada' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
+              </th>
+
+              <th *ngIf="columnasVisibles['direccion_original']" class="wide-column">
+                Dirección
+              </th>
+
+              <th *ngIf="columnasVisibles['colonia']">Colonia</th>
+              <th *ngIf="columnasVisibles['alcaldia_municipio']">Municipio</th>
+              <th *ngIf="columnasVisibles['entidad_federativa']">Estado</th>
+              <th *ngIf="columnasVisibles['codigopostal']">CP</th>
+
+              <th *ngIf="columnasVisibles['latitud']"
+                  (click)="ordenarPor('latitud')"
+                  [class.sorted]="columnaOrden === 'latitud'"
+                  class="sortable">
+                Latitud
+                <span class="sort-icon">{{ columnaOrden === 'latitud' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
+              </th>
+
+              <th *ngIf="columnasVisibles['longitud']"
+                  (click)="ordenarPor('longitud')"
+                  [class.sorted]="columnaOrden === 'longitud'"
+                  class="sortable">
+                Longitud
+                <span class="sort-icon">{{ columnaOrden === 'longitud' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
+              </th>
+
+              <th *ngIf="columnasVisibles['confianza']">Confianza</th>
+
+              <th class="sticky-col actions-col">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr *ngFor="let item of registrosPaginaActual; let i = index">
+              <td class="sticky-col index-col">{{ (paginaActual - 1) * registrosPorPagina + i + 1 }}</td>
+
+              <td *ngIf="columnasVisibles['id_salida']" class="id-cell">{{ item.id_salida }}</td>
+              <td *ngIf="columnasVisibles['id_entrada']" class="id-cell">{{ item.id_entrada }}</td>
+
+              <td *ngIf="columnasVisibles['direccion_original']" class="address-cell">
+                <div class="address-content">
+                  <div class="address-text">{{ item.direccion_original }}</div>
+                  <div *ngIf="item.colonia || item.alcaldia_municipio" class="address-details">
+                    <small>
+                      <span *ngIf="item.colonia">{{ item.colonia }}</span>
+                      <span *ngIf="item.alcaldia_municipio">, {{ item.alcaldia_municipio }}</span>
+                      <span *ngIf="item.codigopostal">, CP: {{ item.codigopostal }}</span>
+                    </small>
+                  </div>
+                </div>
+              </td>
+
+              <td *ngIf="columnasVisibles['colonia']">{{ item.colonia }}</td>
+              <td *ngIf="columnasVisibles['alcaldia_municipio']">{{ item.alcaldia_municipio }}</td>
+              <td *ngIf="columnasVisibles['entidad_federativa']">{{ item.entidad_federativa }}</td>
+              <td *ngIf="columnasVisibles['codigopostal']" class="text-center">{{ item.codigopostal }}</td>
+
+              <td *ngIf="columnasVisibles['latitud']" class="coord-cell">
+                <span *ngIf="item.latitud" class="coord-value">{{ item.latitud | number:'1.6-6' }}</span>
+                <span *ngIf="!item.latitud" class="no-coord-text">N/A</span>
+              </td>
+
+              <td *ngIf="columnasVisibles['longitud']" class="coord-cell">
+                <span *ngIf="item.longitud" class="coord-value">{{ item.longitud | number:'1.6-6' }}</span>
+                <span *ngIf="!item.longitud" class="no-coord-text">N/A</span>
+              </td>
+
+              <td *ngIf="columnasVisibles['confianza']" class="confidence-cell">
+                <div class="confidence-display">
+                  <div class="confidence-bar">
+                    <div class="confidence-fill" [style.width]="item.confianza * 100 + '%'"></div>
+                  </div>
+                  <span class="confidence-value">{{ item.confianza_porcentaje }}</span>
+                </div>
+              </td>
+
+              <td class="sticky-col actions-col">
+                <div class="actions-container">
+                  <button (click)="editarRegistro(item)"
+                          class="btn-icon-only btn-edit"
+                          title="Editar registro">
+                    ✏️
+                  </button>
+
+                  <button (click)="eliminarRegistro(item)"
+                          class="btn-icon-only btn-delete"
+                          title="Eliminar registro">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination-bottom">
+        <div class="pagination-info">
+          Mostrando <strong>{{ calcularInicioRegistros() }}</strong> a
+          <strong>{{ calcularFinRegistros() }}</strong> de
+          <strong>{{ direccionesProcesadas.length }}</strong> registros
+        </div>
+
+        <div class="pagination-controls">
+          <button (click)="cambiarPaginaTabla(paginaActual - 1)"
+                  [disabled]="paginaActual === 1"
+                  class="pagination-btn">
+            ‹ Anterior
+          </button>
+
+          <div class="page-numbers">
+            <span *ngFor="let pagina of obtenerArrayPaginas()"
+                  (click)="cambiarPaginaTabla(pagina)"
+                  [class.active]="pagina === paginaActual"
+                  class="page-number">
+              {{ pagina }}
+            </span>
+          </div>
+
+          <button (click)="cambiarPaginaTabla(paginaActual + 1)"
+                  [disabled]="paginaActual === totalPaginas"
+                  class="pagination-btn">
+            Siguiente ›
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!cargando && direccionesProcesadas.length === 0 && !error" class="no-data">
+    <div class="no-data-content">
+      <div class="no-data-icon">📭</div>
+      <h3>No hay datos para mostrar</h3>
+      <p>No se encontraron registros en la base de datos.</p>
+      <button (click)="cargarDirecciones()" class="btn-primary">
+        <span class="btn-icon">🔄</span>
+        <span class="btn-text">Cargar datos</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="sidebar-open-overlay" *ngIf="sidebarOpen" (click)="toggleSidebar()"></div>

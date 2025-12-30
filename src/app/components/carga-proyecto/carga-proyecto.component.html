@@ -1,0 +1,160 @@
+<div class="carga-proyecto-container">
+  <header class="carga-header">
+    <div class="breadcrumb">
+      <a (click)="volverAlDashboard()" class="breadcrumb-item" style="cursor: pointer;">
+        Volver al inicio
+      </a>
+      <span class="breadcrumb-separator">›</span>
+      <span class="breadcrumb-item active">Carga de documentos</span>
+    </div>
+    <h1 class="titulo-carga">GEOCODIFICADOR</h1>
+  </header>
+
+  <main class="carga-main">
+    <div class="area-carga">
+      <div class="area-carga-contenido"
+           [class.drag-over]="false"
+           (dragover)="prevenirComportamientoPredeterminado($event)"
+           (dragenter)="prevenirComportamientoPredeterminado($event)"
+           (dragleave)="prevenirComportamientoPredeterminado($event)"
+           (drop)="onArrastrarSoltar($event)">
+
+        <div *ngIf="!archivoCSV && !cargando && !error && !estaCompletado" class="estado-sin-archivo">
+          <div class="icono-carga">📄</div>
+          <h3>Arrastra y suelta tu archivo CSV aquí para comenzar</h3>
+          <p class="texto-ayuda">O haz clic para seleccionar un archivo</p>
+
+          <input type="file" id="fileInput" accept=".csv" (change)="onArchivoSeleccionado($event)" class="input-file">
+          <label for="fileInput" class="btn-seleccionar">
+            <span class="btn-icon">📂</span>
+            <span class="btn-text">Seleccionar Archivo</span>
+          </label>
+
+          <p class="formato-texto">Formato soportado: CSV (máx. 50MB)</p>
+        </div>
+
+        <div *ngIf="archivoCSV && !cargando && !error && !estaCompletado" class="estado-con-archivo">
+          <div class="archivo-info">
+            <div class="archivo-icono">📄</div>
+            <div class="archivo-details">
+              <h4>{{ archivoCSV.name }}</h4>
+              <p class="archivo-size">{{ (archivoCSV.size / 1024 / 1024).toFixed(2) }} MB</p>
+            </div>
+            <button (click)="cancelarCarga()" class="btn-eliminar" title="Eliminar archivo">
+              🗑️
+            </button>
+          </div>
+
+          <div class="acciones-archivo">
+            <button (click)="cancelarCarga()" class="btn-secundario">
+              <span class="btn-text">Cambiar Archivo</span>
+            </button>
+            <button (click)="procesarArchivo()" class="btn-principal">
+              <span class="btn-text">Iniciar Procesamiento</span>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="cargando" class="estado-procesando">
+          <div class="procesando-header">
+            <div class="spinner-procesando"></div>
+            <h3>{{ mensajeEstado }}</h3>
+          </div>
+
+          <div class="progreso-container">
+            <div class="progreso-info">
+              <span class="progreso-texto">{{ mensajeEstado }}</span>
+              <span class="progreso-porcentaje">{{ progreso }}%</span>
+            </div>
+
+            <div class="progreso-bar">
+              <div class="progreso-fill" [style.width]="progreso + '%'"></div>
+            </div>
+
+            <div class="progreso-detalles">
+              <div class="detalle-item">
+                <span class="detalle-label">Progreso:</span>
+                <span class="detalle-valor">{{ progreso }}% completado</span>
+              </div>
+              <div class="detalle-item">
+                <span class="detalle-label">Registros:</span>
+                <span class="detalle-valor">{{ registrosProcesados }} / {{ totalRegistros }}</span>
+              </div>
+              <div class="detalle-item">
+                <span class="detalle-label">Tiempo transcurrido:</span>
+                <span class="detalle-valor">{{ tiempoProcesamiento }}</span>
+              </div>
+              <div class="detalle-item">
+                <span class="detalle-label">Estado:</span>
+                <span class="detalle-valor">
+                  <span *ngIf="tipoProceso === 'uploading'">Subiendo archivo...</span>
+                  <span *ngIf="tipoProceso === 'parsing'">Analizando archivo...</span>
+                  <span *ngIf="tipoProceso === 'normalizing'">Normalizando datos...</span>
+                  <span *ngIf="tipoProceso === 'geocoding'">Geocodificando...</span>
+                  <span *ngIf="tipoProceso === 'saving'">Almacenando información...</span>
+                  <span *ngIf="tipoProceso === 'complete'">Finalizando...</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button (click)="cancelarProcesamiento()" class="btn-cancelar" *ngIf="progreso < 100">
+            <span class="btn-text">Cancelar Procesamiento</span>
+          </button>
+        </div>
+
+        <div *ngIf="estaCompletado && !cargando" class="estado-completado">
+          <div class="completado-icono">✅</div>
+          <h3>¡Registro Exitoso!</h3>
+
+          <div class="completado-detalles">
+            <div class="detalle-item">
+              <span class="detalle-label">Total registros procesados:</span>
+              <span class="detalle-valor">{{ totalRegistros }}</span>
+            </div>
+            <div class="detalle-item" *ngIf="eficiencia">
+              <span class="detalle-label">Eficiencia:</span>
+              <span class="detalle-valor">{{ eficiencia }}</span>
+            </div>
+            <div class="detalle-item" *ngIf="velocidad">
+              <span class="detalle-label">Velocidad:</span>
+              <span class="detalle-valor">{{ velocidad }}</span>
+            </div>
+            <div class="detalle-item" *ngIf="idLote">
+              <span class="detalle-label">ID Lote:</span>
+              <span class="detalle-valor">#{{ idLote }}</span>
+            </div>
+          </div>
+
+          <p class="completado-subtexto">
+            La información ha sido almacenada correctamente en la base de datos.
+          </p>
+
+          <div class="acciones-completado">
+            <button (click)="descargarResultados()" class="btn-secundario" *ngIf="idLote">
+              <span class="btn-text">Descargar resultados</span>
+            </button>
+            <button (click)="volverAlDashboard()" class="btn-principal">
+              <span class="btn-text">Ir al Dashboard</span>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="error && !cargando" class="mensaje-error">
+          <div class="error-icono">⚠️</div>
+          <div class="error-contenido">
+            <h4>Error en la carga</h4>
+            <p>{{ error }}</p>
+            <button (click)="reintentarCarga()" class="btn-reintentar" *ngIf="archivoCSV">
+              <span class="btn-icon">🔄</span>
+              <span class="btn-text">Intentar de nuevo</span>
+            </button>
+            <button (click)="cancelarCarga()" class="btn-secundario" style="margin-top: 10px;">
+              <span class="btn-text">Seleccionar otro archivo</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

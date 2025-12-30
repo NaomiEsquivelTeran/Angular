@@ -1,0 +1,49 @@
+<div class="visor-container">
+  <header class="visor-header">
+    <div class="header-content">
+      <h1>GEOCODIFICADOR - VISOR GEOGRÁFICO</h1>
+
+    </div>
+  </header>
+
+  <div class="visor-main">
+    <!-- Mapa Principal -->
+    <main class="area-mapa">
+      <!-- Contenedor del mapa - ESTE ES EL DIV QUE LEAFLET USARÁ -->
+      <div id="mapContainer" class="contenedor-mapa">
+        <!-- Estado de carga -->
+        <div *ngIf="isLoading" class="estado-carga">
+          <div class="spinner"></div>
+          <p>Cargando mapa...</p>
+          <p *ngIf="!leafletLoaded" class="leaflet-status">Cargando biblioteca de mapas...</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Panel Lateral Derecho -->
+    <aside class="panel-derecho">
+      <section class="seccion-filtros">
+        <div class="encabezado-seccion">
+          <h3 class="titulo-seccion">Filtros de Calidad</h3>
+          <div class="acciones-filtros">
+            <button class="btn-accion" (click)="seleccionarTodos()">Todos</button>
+            <button class="btn-accion" (click)="deseleccionarTodos()">Ninguno</button>
+          </div>
+        </div>
+        <div class="lista-filtros">
+          <div class="item-filtro" *ngFor="let filtro of filtros">
+            <label class="etiqueta-filtro" [class.activo]="estaFiltroActivo(filtro.nivel)">
+              <input type="checkbox"
+                     [checked]="estaFiltroActivo(filtro.nivel)"
+                     (change)="alternarFiltro(filtro.nivel)"
+                     class="checkbox-filtro">
+              <span class="indicador-color" [style.backgroundColor]="filtro.color"></span>
+              <span class="texto-filtro">{{ filtro.nivel }} ({{ filtro.rango }})</span>
+              <span class="contador-filtro">{{ filtro.cantidad }}</span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>

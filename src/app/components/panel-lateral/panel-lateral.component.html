@@ -1,0 +1,59 @@
+<aside class="sidebar" [class.open]="isOpen">
+  <div class="sidebar-header">
+    <h2 class="sidebar-title">Geocodificador</h2>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <ul class="nav-list">
+        <li>
+          <a routerLink="/dashboard"
+             routerLinkActive="active"
+             class="nav-link">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">Tabla de Registros</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <ul class="nav-list">
+        <li>
+          <a routerLink="/carga"
+             routerLinkActive="active"
+             class="nav-link">
+            <span class="nav-icon">📤</span>
+            <span class="nav-text">Carga de Documentos</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <ul class="nav-list">
+        <li>
+          <a routerLink="/dashboard-resultados"
+             routerLinkActive="active"
+             class="nav-link">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">Dashboard Resultados</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <ul class="nav-list">
+        <li>
+          <a routerLink="/visor"
+             routerLinkActive="active"
+             class="nav-link">
+            <span class="nav-icon">🗺️</span>
+            <span class="nav-text">Visualizar en Mapas</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+</aside>
