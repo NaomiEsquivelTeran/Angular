@@ -2,7 +2,7 @@ import { Component, AfterViewInit, OnInit, OnDestroy, ChangeDetectorRef } from '
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { GeocodificadorService, PuntoMapa, EstadisticasVisor } from './visor.service';
+import { GeocodificadorService, PuntoMapa, EstadisticasVisor, FiltrosVisor } from './visor.service';
 
 declare global {
   interface Window {
@@ -18,43 +18,36 @@ declare global {
   styleUrls: ['./visor-geografico.css']
 })
 export class VisorGeograficoComponent implements AfterViewInit, OnInit, OnDestroy {
-  // Variables del mapa
   map: any = null;
   isLoading = true;
   leafletLoaded = false;
 
-  // Marcadores en el mapa
   markers: any[] = [];
-
-  // Datos reales del servidor
   puntos: PuntoMapa[] = [];
   estadisticas: EstadisticasVisor | null = null;
 
-  // Filtros dinámicos basados en datos reales
-// En visor-geografico.ts, actualiza el array filtros:
-filtros = [
-  { nivel: 'Alto', rango: '80-100%', cantidad: 0, color: '#27ae60', activo: true, min: 80, max: 100 },
-  { nivel: 'Medio', rango: '50-79%', cantidad: 0, color: '#f39c12', activo: true, min: 50, max: 79 },
-  { nivel: 'Bajo', rango: '20-49%', cantidad: 0, color: '#e74c3c', activo: true, min: 20, max: 49 },
-  { nivel: 'Muy Bajo', rango: '0-19%', cantidad: 0, color: '#c0392b', activo: true, min: 0, max: 19 }
-];
-
-  // MODIFICADO: Nombres de parámetros CORRECTOS para el backend
-  filtrosAplicados = {
-    calidad_minima: 0,    // CORRECTO: el backend espera 'calidad_minima' no 'cal._'
-    calidad_maxima: 100,  // CORRECTO
-    municipio: '',
-    estado: '',
-    colonia: ''
-    // NO incluir 'limite' para traer TODOS los datos
+  porcentajesFiltros = {
+    alto: 0,
+    medio: 0,
+    bajo: 0,
+    muyBajo: 0
   };
 
-  // Búsqueda
+  filtros = [
+    { nivel: 'Alto', rango: '80-100%', cantidad: 0, porcentaje: 0, color: '#27ae60', activo: true, min: 80, max: 100 },
+    { nivel: 'Medio', rango: '50-79%', cantidad: 0, porcentaje: 0, color: '#f39c12', activo: true, min: 50, max: 79 },
+    { nivel: 'Bajo', rango: '20-49%', cantidad: 0, porcentaje: 0, color: '#e74c3c', activo: true, min: 20, max: 49 },
+    { nivel: 'Muy Bajo', rango: '0-19%', cantidad: 0, porcentaje: 0, color: '#c0392b', activo: true, min: 0, max: 19 }
+  ];
+
+  filtrosAplicados: FiltrosVisor = {
+    calidad_minima: 0,
+    calidad_maxima: 100
+  };
+
   terminoBusqueda = '';
   buscando = false;
-
-  // Centro inicial
-  centroMapa = [21.125, -101.686]; // León, Guanajuato
+  centroMapa = [21.125, -101.686];
   zoomInicial = 13;
 
   constructor(
@@ -62,19 +55,15 @@ filtros = [
     private cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit(): void {
-    console.log('✅ Componente visor-geografico inicializado');
-  }
+  ngOnInit(): void {}
 
   ngAfterViewInit(): void {
-    console.log('🗺️ Iniciando carga del mapa...');
     setTimeout(() => {
       this.checkLeaflet();
     }, 0);
   }
 
   ngOnDestroy(): void {
-    // Limpiar mapa al destruir componente
     if (this.map) {
       this.map.remove();
       this.map = null;
@@ -84,19 +73,14 @@ filtros = [
 
   checkLeaflet(): void {
     if (typeof window.L !== 'undefined') {
-      console.log('✅ Leaflet ya está disponible');
       this.leafletLoaded = true;
       this.initMap();
       return;
     }
-
-    console.log('⚠️ Leaflet no está disponible, cargando manualmente...');
     this.loadLeafletManually();
   }
 
   loadLeafletManually(): void {
-    console.log('📥 Cargando Leaflet manualmente...');
-
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
     cssLink.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -106,13 +90,11 @@ filtros = [
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
 
     script.onload = () => {
-      console.log('✅ Leaflet cargado manualmente');
       this.leafletLoaded = true;
       this.initMap();
     };
 
     script.onerror = () => {
-      console.error('❌ Error al cargar Leaflet manualmente');
       this.showMapError('No se pudo cargar la biblioteca de mapas.');
       setTimeout(() => {
         this.isLoading = false;
@@ -124,11 +106,8 @@ filtros = [
   }
 
   initMap(): void {
-    console.log('🗺️ Inicializando mapa...');
-
     const mapElement = document.getElementById('mapContainer');
     if (!mapElement) {
-      console.error('❌ Elemento del mapa no encontrado');
       setTimeout(() => {
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -137,7 +116,6 @@ filtros = [
     }
 
     if (typeof window.L === 'undefined') {
-      console.error('❌ Leaflet no está disponible para crear el mapa');
       this.showMapError('La biblioteca de mapas no está disponible.');
       setTimeout(() => {
         this.isLoading = false;
@@ -149,35 +127,24 @@ filtros = [
     const L = window.L;
 
     try {
-      console.log('🌍 Creando mapa con Leaflet...');
       this.map = L.map('mapContainer').setView(this.centroMapa, this.zoomInicial);
-      console.log('✅ Mapa creado');
 
-      // Capa base de OpenStreetMap
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19
       }).addTo(this.map);
-      console.log('✅ Capa de mapa agregada');
 
-      // Agregar escala
       L.control.scale().addTo(this.map);
 
-      // Cargar datos reales del servidor (TODOS)
       this.cargarDatosReales();
 
-      // Ajustar tamaño del mapa
       setTimeout(() => {
         if (this.map) {
           this.map.invalidateSize();
-          console.log('✅ Tamaño del mapa actualizado');
         }
       }, 300);
 
-      console.log('✅ Mapa completamente inicializado');
-
     } catch (error: any) {
-      console.error('❌ Error al crear el mapa:', error);
       this.showMapError(`Error: ${error.message}`);
       setTimeout(() => {
         this.isLoading = false;
@@ -186,55 +153,57 @@ filtros = [
     }
   }
 
-  cargarDatosReales(): void {
-    console.log('📊 Cargando TODOS los datos del servidor...');
-    console.log('📤 Enviando filtros:', this.filtrosAplicados);
+  recalcularFiltrosParaBackend(): void {
+    const filtrosActivos = this.filtros.filter(f => f.activo);
 
-    // Mostrar loading
+    if (filtrosActivos.length === 0) {
+      this.filtrosAplicados = {
+        calidad_minima: undefined,
+        calidad_maxima: undefined
+      };
+    } else if (filtrosActivos.length === this.filtros.length) {
+      this.filtrosAplicados = {
+        calidad_minima: undefined,
+        calidad_maxima: undefined
+      };
+    } else {
+      const minValues = filtrosActivos.map(f => f.min);
+      const maxValues = filtrosActivos.map(f => f.max);
+
+      const calidadMinima = Math.min(...minValues);
+      const calidadMaxima = Math.max(...maxValues);
+
+      this.filtrosAplicados = {
+        calidad_minima: calidadMinima,
+        calidad_maxima: calidadMaxima
+      };
+    }
+
+    this.cargarDatosReales();
+  }
+
+  cargarDatosReales(): void {
     this.isLoading = true;
     this.cdr.detectChanges();
 
-    // Limpiar puntos anteriores
     this.puntos = [];
     this.estadisticas = null;
 
     this.geocodificadorService.obtenerCoordenadasVisor(this.filtrosAplicados)
       .subscribe({
         next: (response) => {
-          console.log('✅ Datos recibidos del servidor');
-          console.log('📈 Response:', response);
-
           if (response.success && response.puntos && response.puntos.length > 0) {
             this.puntos = response.puntos;
             this.estadisticas = response.estadisticas;
 
-            console.log('📊 Estadísticas recibidas:');
-            console.log('  Total en BD:', response.estadisticas?.totalEnBD || 'N/A');
-            console.log('  Puntos obtenidos:', response.puntos?.length || 0);
-            console.log('  Por categoría:', response.estadisticas?.porCategoria || 'N/A');
-
-            // Actualizar estadísticas en los filtros
             this.actualizarEstadisticasFiltros();
-
-            // Agregar marcadores al mapa
             this.agregarMarcadoresReales();
 
-            // Si hay muchos puntos, mostrar advertencia en consola
-            if (this.puntos.length > 10000) {
-              console.warn('⚠️ Muchos puntos para renderizar:', this.puntos.length);
-              console.warn('💡 Recomendación: Considera usar clustering para mejorar rendimiento');
-            }
-
-            // Centrar el mapa en los datos si hay muchos
             if (this.puntos.length > 0 && this.map) {
               this.ajustarVistaMapa();
             }
 
-            // Llamar al método de diagnóstico
-            this.diagnosticarDatosFaltantes();
-
           } else {
-            console.log('📭 No se encontraron puntos con los filtros actuales');
             this.mostrarMensajeSinDatos();
           }
 
@@ -242,63 +211,24 @@ filtros = [
           this.cdr.detectChanges();
         },
         error: (error) => {
-          console.error('❌ Error al cargar datos:', error);
-          console.error('Error completo:', error);
-
-          // Manejo de errores específicos
           let mensajeError = 'Error al cargar los datos del servidor';
 
-          if (error.name === 'TimeoutError' || error.status === 408) {
+          if (error.status === 408) {
             mensajeError = 'La consulta tardó demasiado. Intenta con filtros más específicos.';
           } else if (error.status === 404) {
             mensajeError = 'Endpoint no encontrado. Verifica que la ruta sea correcta.';
-            console.error('⚠️ Error 404: Revisa que el backend tenga la ruta /api/visor/coordenadas');
           } else if (error.status === 500) {
             mensajeError = 'Error interno del servidor. Verifica que el backend esté funcionando.';
+          } else if (error.status === 0) {
+            mensajeError = 'No se puede conectar al servidor. Verifica que el backend esté corriendo en http://localhost:3000';
           }
 
-          this.mostrarErrorEnMapa(mensajeError, error.error?.detalle || error.message);
+          this.mostrarErrorEnMapa(mensajeError, error.error?.detalle || error.message || 'Sin detalles');
           this.isLoading = false;
           this.cdr.detectChanges();
         }
       });
   }
-
-  // Método para diagnóstico
-// Método para diagnóstico
-diagnosticarDatosFaltantes(): void {
-  console.log('🔍 DIAGNÓSTICO DE DATOS');
-  console.log('========================');
-
-  if (this.estadisticas && this.estadisticas.totalEnBD !== undefined) {
-    console.log(`Total en BD según estadísticas: ${this.estadisticas.totalEnBD}`);
-    console.log(`Puntos cargados en el mapa: ${this.puntos.length}`);
-
-    const diferencia = this.estadisticas.totalEnBD - this.puntos.length;
-    console.log(`📉 Diferencia: ${diferencia} registros no cargados`);
-
-    if (diferencia > 0) {
-      console.log('⚠️ Posibles causas:');
-      console.log('   1. Algunos registros no tienen coordenadas válidas (latitud/longitud son NULL o 0)');
-      console.log('   2. Los filtros están excluyendo algunos registros');
-      console.log('   3. Problema con la calidad mínima/máxima en los parámetros');
-
-      // Verificar si hay puntos sin coordenadas válidas
-      const puntosSinCoordenadas = this.puntos.filter(p =>
-        !p.latitud || !p.longitud || p.latitud === 0 || p.longitud === 0
-      );
-
-      console.log(`   Puntos sin coordenadas válidas en los datos cargados: ${puntosSinCoordenadas.length}`);
-
-      // Sugerir prueba sin filtros
-      console.log('💡 Prueba: Revisa directamente en el backend con esta URL:');
-      console.log(`   http://localhost:3000/api/visor/coordenadas?calidad_minima=0&calidad_maxima=100`);
-    }
-  } else {
-    console.log('No hay estadísticas disponibles para diagnóstico');
-  }
-  console.log('========================');
-}
 
   ajustarVistaMapa(): void {
     if (!this.map || this.puntos.length === 0) return;
@@ -307,21 +237,16 @@ diagnosticarDatosFaltantes(): void {
 
     try {
       if (this.puntos.length === 1) {
-        // Si solo hay un punto, centrar en él
         const punto = this.puntos[0];
         this.map.setView([punto.latitud, punto.longitud], 15);
       } else if (this.puntos.length > 1 && this.puntos.length <= 100) {
-        // Si hay pocos puntos, ajustar vista para mostrarlos todos
         const bounds = L.latLngBounds(this.puntos.map(p => [p.latitud, p.longitud]));
         this.map.fitBounds(bounds, { padding: [50, 50] });
       } else {
-        // Si hay muchos puntos, mantener vista inicial o centrar en el primero
         const primerPunto = this.puntos[0];
         this.map.setView([primerPunto.latitud, primerPunto.longitud], this.zoomInicial);
       }
-    } catch (error) {
-      console.error('Error ajustando vista del mapa:', error);
-    }
+    } catch (error) {}
   }
 
   mostrarMensajeSinDatos(): void {
@@ -335,9 +260,6 @@ diagnosticarDatosFaltantes(): void {
             <h3 style="color: #3498db; margin: 0 0 10px 0;">Sin datos para mostrar</h3>
             <p style="margin: 0; color: #666;">
               No se encontraron coordenadas con los filtros actuales.
-            </p>
-            <p style="margin-top: 10px; font-size: 12px; color: #999;">
-              Intenta cambiar los filtros de calidad o ajustar los parámetros de búsqueda.
             </p>
           </div>
         `)
@@ -354,9 +276,6 @@ diagnosticarDatosFaltantes(): void {
           <div style="padding: 15px; text-align: center; max-width: 300px;">
             <h3 style="color: #e74c3c; margin-bottom: 10px;">⚠️ ${titulo}</h3>
             <p style="margin: 0 0 10px 0; color: #666;">${mensaje}</p>
-            <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">
-              Verifica que el backend esté corriendo en http://localhost:3000/api/visor/coordenadas
-            </p>
           </div>
         `)
         .openOn(this.map);
@@ -364,48 +283,63 @@ diagnosticarDatosFaltantes(): void {
   }
 
   actualizarEstadisticasFiltros(): void {
-    if (!this.estadisticas) return;
+    if (!this.estadisticas) {
+      return;
+    }
 
-    this.filtros.forEach(filtro => {
-      switch(filtro.nivel) {
-        case 'Alto':
-          filtro.cantidad = this.estadisticas!.porCategoria.alto || 0;
-          break;
-        case 'Medio':
-          filtro.cantidad = this.estadisticas!.porCategoria.medio || 0;
-          break;
-        case 'Bajo':
-          filtro.cantidad = this.estadisticas!.porCategoria.bajo || 0;
-          break;
-        case 'Muy Bajo':
-          filtro.cantidad = this.estadisticas!.porCategoria.muyBajo || 0;
-          break;
-      }
-    });
+    const totalEstadisticas = this.estadisticas.total;
+
+    if (totalEstadisticas > 0) {
+      const porCategoria = this.estadisticas.porCategoria || {};
+
+      this.porcentajesFiltros = {
+        alto: Math.round((porCategoria.alto / totalEstadisticas) * 100 * 10) / 10,
+        medio: Math.round((porCategoria.medio / totalEstadisticas) * 100 * 10) / 10,
+        bajo: Math.round((porCategoria.bajo / totalEstadisticas) * 100 * 10) / 10,
+        muyBajo: Math.round((porCategoria.muyBajo / totalEstadisticas) * 100 * 10) / 10
+      };
+
+      this.filtros.forEach(filtro => {
+        switch(filtro.nivel) {
+          case 'Alto':
+            filtro.cantidad = porCategoria.alto || 0;
+            filtro.porcentaje = this.porcentajesFiltros.alto;
+            break;
+          case 'Medio':
+            filtro.cantidad = porCategoria.medio || 0;
+            filtro.porcentaje = this.porcentajesFiltros.medio;
+            break;
+          case 'Bajo':
+            filtro.cantidad = porCategoria.bajo || 0;
+            filtro.porcentaje = this.porcentajesFiltros.bajo;
+            break;
+          case 'Muy Bajo':
+            filtro.cantidad = porCategoria.muyBajo || 0;
+            filtro.porcentaje = this.porcentajesFiltros.muyBajo;
+            break;
+        }
+      });
+    } else {
+      this.filtros.forEach(filtro => {
+        filtro.cantidad = 0;
+        filtro.porcentaje = 0;
+      });
+    }
   }
 
   agregarMarcadoresReales(): void {
     if (!this.map || !this.puntos.length) {
-      console.log('No hay puntos para mostrar o mapa no está disponible');
       return;
     }
 
     const L = window.L;
-
-    // Limpiar marcadores anteriores
     this.limpiarMarcadores();
 
-    console.log(`📍 Agregando ${this.puntos.length} marcadores...`);
-
-    let marcadoresAgregados = 0;
-
     this.puntos.forEach((punto) => {
-      // Verificar si el punto pasa los filtros activos
       if (!this.cumpleFiltros(punto)) {
         return;
       }
 
-      // Crear icono personalizado
       const customIcon = L.divIcon({
         html: `<div style="
           width: 14px;
@@ -420,7 +354,6 @@ diagnosticarDatosFaltantes(): void {
         className: 'custom-marker'
       });
 
-      // Crear marcador
       const marker = L.marker([punto.latitud, punto.longitud], {
         icon: customIcon,
         title: punto.direccion_original || 'Sin dirección'
@@ -450,21 +383,14 @@ diagnosticarDatosFaltantes(): void {
               Lng: ${punto.longitud.toFixed(6)}
             </p>
           </div>
-          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 12px; color: #666;">
-            <em>Haz clic fuera para cerrar</em>
-          </div>
         </div>
       `);
 
       this.markers.push(marker);
-      marcadoresAgregados++;
     });
-
-    console.log(`✅ ${marcadoresAgregados} marcadores agregados al mapa (filtrados: ${this.puntos.length - marcadoresAgregados})`);
   }
 
   cumpleFiltros(punto: PuntoMapa): boolean {
-    // Filtrar por nivel de confianza según filtros activos
     return this.filtros.some(f =>
       f.activo &&
       punto.confianza >= f.min &&
@@ -480,18 +406,14 @@ diagnosticarDatosFaltantes(): void {
         }
       });
       this.markers = [];
-      console.log('🗑️ Marcadores limpiados');
     }
   }
 
-  // Métodos de filtros
   alternarFiltro(nivel: string): void {
-    console.log('Filtro alternado:', nivel);
     const filtro = this.filtros.find(f => f.nivel === nivel);
     if (filtro) {
       filtro.activo = !filtro.activo;
-      console.log(`Filtro ${nivel} ahora está: ${filtro.activo ? 'activo' : 'inactivo'}`);
-      this.actualizarMapaSegunFiltros();
+      this.recalcularFiltrosParaBackend();
     }
   }
 
@@ -501,30 +423,38 @@ diagnosticarDatosFaltantes(): void {
   }
 
   seleccionarTodos(): void {
-    console.log('Seleccionar todos');
-    this.filtros.forEach(filtro => filtro.activo = true);
-    this.actualizarMapaSegunFiltros();
+    this.filtros.forEach(filtro => {
+      filtro.activo = true;
+    });
+    this.recalcularFiltrosParaBackend();
   }
 
   deseleccionarTodos(): void {
-    console.log('Deseleccionar todos');
-    this.filtros.forEach(filtro => filtro.activo = false);
-    this.actualizarMapaSegunFiltros();
+    this.filtros.forEach(filtro => {
+      filtro.activo = false;
+    });
+    this.recalcularFiltrosParaBackend();
+  }
+
+  limpiarFiltrosCompletamente(): void {
+    this.filtros.forEach(filtro => {
+      filtro.activo = true;
+    });
+
+    this.filtrosAplicados = {
+      calidad_minima: undefined,
+      calidad_maxima: undefined
+    };
+
+    this.cargarDatosReales();
   }
 
   actualizarMapaSegunFiltros(): void {
-    console.log('Actualizando mapa según filtros activos:',
-      this.filtros.filter(f => f.activo).map(f => f.nivel));
-
-    // Reagregar marcadores con los nuevos filtros
-    this.agregarMarcadoresReales();
-    this.cdr.detectChanges();
+    this.recalcularFiltrosParaBackend();
   }
 
-  // Método para buscar direcciones
   buscarDirecciones(): void {
     if (!this.terminoBusqueda || this.terminoBusqueda.length < 3) {
-      console.log('Término de búsqueda demasiado corto');
       return;
     }
 
@@ -534,14 +464,11 @@ diagnosticarDatosFaltantes(): void {
     this.geocodificadorService.buscarDirecciones(this.terminoBusqueda)
       .subscribe({
         next: (response) => {
-          console.log('Resultados de búsqueda:', response.resultados?.length || 0);
           this.buscando = false;
 
           if (response.success && response.resultados && response.resultados.length > 0) {
-            // Limpiar marcadores actuales
             this.limpiarMarcadores();
 
-            // Agregar solo los resultados de búsqueda
             const L = window.L;
             response.resultados.forEach((punto: PuntoMapa) => {
               const customIcon = L.divIcon({
@@ -585,12 +512,10 @@ diagnosticarDatosFaltantes(): void {
               this.markers.push(marker);
             });
 
-            // Centrar en el primer resultado
             const primerResultado = response.resultados[0];
             this.map.setView([primerResultado.latitud, primerResultado.longitud], 15);
 
           } else {
-            // Mostrar mensaje de no resultados
             if (this.map) {
               const L = window.L;
               L.popup()
@@ -608,25 +533,21 @@ diagnosticarDatosFaltantes(): void {
           this.cdr.detectChanges();
         },
         error: (error) => {
-          console.error('Error en búsqueda:', error);
           this.buscando = false;
           this.cdr.detectChanges();
         }
       });
   }
 
-  // Limpiar búsqueda y mostrar todos los puntos
   limpiarBusqueda(): void {
     this.terminoBusqueda = '';
     this.buscando = false;
-    // Volver a cargar todos los puntos
     this.limpiarMarcadores();
     this.agregarMarcadoresReales();
     this.cdr.detectChanges();
   }
 
   showMapError(message: string): void {
-    console.error('Mostrando error:', message);
     const mapElement = document.getElementById('mapContainer');
     if (mapElement) {
       mapElement.innerHTML = `
@@ -650,9 +571,7 @@ diagnosticarDatosFaltantes(): void {
             <p style="margin: 0 0 15px 0; color: #ecf0f1;">${message}</p>
           </div>
           <button onclick="location.reload()"
-                  style="margin-top: 20px; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; transition: background 0.3s;"
-                  onmouseover="this.style.background='#2980b9'"
-                  onmouseout="this.style.background='#3498db'">
+                  style="margin-top: 20px; padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
             🔄 Recargar página
           </button>
         </div>

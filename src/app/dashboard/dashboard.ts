@@ -43,12 +43,12 @@ interface ApiResponse {
 export class DashboardComponent implements OnInit {
   sidebarOpen = true;
   paginaSeleccionada = 'tabla';
-
   direcciones: Direccion[] = [];
   direccionesProcesadas: any[] = [];
   cargando: boolean = false;
   error: string = '';
   totalRegistros: number = 0;
+  eliminandoId: number | null = null;
 
   columnasVisibles: {[key: string]: boolean} = {
     id_salida: true,
@@ -67,10 +67,8 @@ export class DashboardComponent implements OnInit {
   registrosPorPagina: number = 15;
   paginaActual: number = 1;
   totalPaginas: number = 1;
-
   columnaOrden: string = 'id_salida';
   ordenAscendente: boolean = true;
-
   registroSeleccionado: Direccion | null = null;
   modoEdicion: boolean = false;
 
@@ -90,11 +88,9 @@ export class DashboardComponent implements OnInit {
 
   cambiarPagina(pagina: string) {
     this.paginaSeleccionada = pagina;
-
     if (this.modoEdicion) {
       this.cancelarEdicion();
     }
-
     this.cdr.detectChanges();
   }
 
@@ -116,7 +112,6 @@ export class DashboardComponent implements OnInit {
             this.direcciones = [];
             this.error = 'No se pudo conectar con el servidor';
           }
-
           this.cargando = false;
           this.cdr.detectChanges();
         },
@@ -200,13 +195,11 @@ export class DashboardComponent implements OnInit {
         .subscribe({
           next: (respuesta: ApiResponse) => {
             alert('Registro actualizado correctamente');
-
             const index = this.direcciones.findIndex(d => d.id_salida === this.registroSeleccionado!.id_salida);
             if (index !== -1) {
               this.direcciones[index] = { ...this.registroSeleccionado! };
               this.procesarParaTabla();
             }
-
             this.cancelarEdicion();
           },
           error: (err: any) => {
@@ -219,13 +212,11 @@ export class DashboardComponent implements OnInit {
         .subscribe({
           next: (respuesta: ApiResponse) => {
             alert('Registro actualizado correctamente');
-
             const index = this.direcciones.findIndex(d => d.id_salida === this.registroSeleccionado!.id_salida);
             if (index !== -1) {
               this.direcciones[index] = { ...this.registroSeleccionado! };
               this.procesarParaTabla();
             }
-
             this.cancelarEdicion();
           },
           error: (err: any) => {
@@ -240,7 +231,6 @@ export class DashboardComponent implements OnInit {
         this.procesarParaTabla();
         alert('Registro actualizado localmente');
       }
-
       this.cancelarEdicion();
     }
   }
@@ -256,39 +246,38 @@ export class DashboardComponent implements OnInit {
 
     if (!confirmar) return;
 
-    if (typeof (this.directionService as any).deleteDirection === 'function') {
-      (this.directionService as any).deleteDirection(registro.id_salida)
-        .subscribe({
-          next: (respuesta: ApiResponse) => {
-            alert('Registro eliminado correctamente');
+    this.eliminandoId = registro.id_salida;
+    this.cdr.detectChanges();
 
-            this.direcciones = this.direcciones.filter(d => d.id_salida !== registro.id_salida);
-            this.procesarParaTabla();
-          },
-          error: (err: any) => {
+    this.directionService.eliminarDireccion(registro.id_salida)
+      .subscribe({
+        next: (respuesta: any) => {
+          this.eliminandoId = null;
+
+          if (respuesta.success || respuesta.message) {
+            alert(respuesta.message || 'Registro eliminado correctamente');
+          } else {
+            alert('Registro eliminado correctamente');
+          }
+
+          this.direcciones = this.direcciones.filter(d => d.id_salida !== registro.id_salida);
+          this.procesarParaTabla();
+          this.cdr.detectChanges();
+        },
+        error: (err: any) => {
+          this.eliminandoId = null;
+
+          if (err.message.includes('404') || err.message.includes('no existe')) {
+            alert('El registro ya no existe en el servidor. Actualizando lista...');
+            this.cargarDirecciones();
+          } else if (err.message.includes('No se puede conectar')) {
+            alert('No se pudo conectar al servidor. Verifica que el servidor esté en ejecución.');
+          } else {
             alert('Error al eliminar el registro: ' + err.message);
           }
-        });
-    }
-    else if (typeof (this.directionService as any).eliminarDireccion === 'function') {
-      (this.directionService as any).eliminarDireccion(registro.id_salida)
-        .subscribe({
-          next: (respuesta: ApiResponse) => {
-            alert('Registro eliminado correctamente');
-
-            this.direcciones = this.direcciones.filter(d => d.id_salida !== registro.id_salida);
-            this.procesarParaTabla();
-          },
-          error: (err: any) => {
-            alert('Error al eliminar el registro: ' + err.message);
-          }
-        });
-    }
-    else {
-      this.direcciones = this.direcciones.filter(d => d.id_salida !== registro.id_salida);
-      this.procesarParaTabla();
-      alert('Registro eliminado localmente (modo simulador)');
-    }
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   calcularPaginacion() {
@@ -437,7 +426,6 @@ export class DashboardComponent implements OnInit {
     const paginas: number[] = [];
     const inicio = Math.max(1, this.paginaActual - 2);
     const fin = Math.min(this.totalPaginas, inicio + 4);
-
     for (let i = inicio; i <= fin; i++) {
       paginas.push(i);
     }

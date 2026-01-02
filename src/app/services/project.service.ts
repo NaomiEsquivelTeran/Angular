@@ -13,7 +13,7 @@ export interface DireccionProcesada {
   latitud: number;
   longitud: number;
   confianza: number;
-   confianza_porcentaje?: string;
+  confianza_porcentaje?: string;
 }
 
 @Injectable({
@@ -23,30 +23,18 @@ export class DashboardService {
   private http = inject(HttpClient);
   private apiUrl = 'http://localhost:3000/api/todas-direcciones';
 
-  /**
-   * Obtiene todas las direcciones procesadas
-   */
   obtenerDirecciones(): Observable<DireccionProcesada[]> {
     return this.http.get<DireccionProcesada[]>(`${this.apiUrl}/direcciones`);
   }
 
-  /**
-   * Obtiene estadísticas del dashboard
-   */
   obtenerEstadisticas(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/estadisticas`);
   }
 
-  /**
-   * Elimina una dirección por ID
-   */
   eliminarDireccion(id: number): Observable<any> {
     return this.http.delete(`${this.apiUrl}/direcciones/${id}`);
   }
 
-  /**
-   * Actualiza una dirección
-   */
   actualizarDireccion(id: number, datos: any): Observable<any> {
     return this.http.put(`${this.apiUrl}/direcciones/${id}`, datos);
   }

@@ -1,7 +1,4 @@
-<!-- Contenedor Principal -->
 <div class="dashboard-container">
-
-  <!-- Header -->
   <header class="dashboard-header">
     <div class="header-content">
       <div class="header-left">
@@ -18,10 +15,7 @@
     </div>
   </header>
 
-  <!-- Contenido Principal -->
   <main class="main-content">
-
-    <!-- Estados -->
     @if (isLoading) {
       <div class="loading-state">
         <div class="spinner">⏳</div>
@@ -38,49 +32,38 @@
       </div>
     }
 
-    <!-- Contenido principal cuando hay datos -->
     @if (!isLoading && !hasError) {
       <div class="content-wrapper">
-
-        <!-- ========== ESTADÍSTICAS PRINCIPALES ========== -->
         <section class="stats-section">
           <div class="stats-grid">
-
-            <!-- Total Registros -->
             <div class="stat-card total">
               <div class="stat-title">TOTAL REGISTROS</div>
               <div class="stat-value">{{ estadisticas.totalRegistros.toLocaleString() }}</div>
               <div class="stat-subtitle">Procesados correctamente</div>
             </div>
 
-            <!-- Exactos -->
             <div class="stat-card exactos">
               <div class="stat-title">EXACTOS (ALTA/VERDE)</div>
               <div class="stat-value">{{ estadisticas.exactos.toLocaleString() }}</div>
               <div class="stat-percentage">{{ porcentajeExactos }}</div>
             </div>
 
-            <!-- Revisión -->
             <div class="stat-card revision">
               <div class="stat-title">REVISIÓN (BAJO/MUY BAJO)</div>
               <div class="stat-value">{{ estadisticas.revision.toLocaleString() }}</div>
               <div class="stat-percentage">{{ porcentajeRevision }}</div>
             </div>
 
-            <!-- Fallidos -->
             <div class="stat-card fallidos">
               <div class="stat-title">FALLIDOS</div>
               <div class="stat-value">{{ estadisticas.fallidos.toLocaleString() }}</div>
               <div class="stat-percentage">{{ porcentajeFallidos }}</div>
             </div>
-
           </div>
         </section>
 
-        <!-- ========== SECCIÓN DE CALIDAD ========== -->
         <section class="quality-section">
           <h2 class="section-title">Calidad de Geocodificación</h2>
-
           <div class="chart-container">
             @if (datosCargados && estadisticas.totalRegistros > 0) {
               <div class="chart-wrapper">
@@ -96,7 +79,6 @@
           </div>
         </section>
 
-        <!-- ========== ACCIONES ========== -->
         <section class="actions-section">
           <div class="action-buttons">
             <button class="btn-action btn-map"
@@ -107,14 +89,15 @@
             </button>
 
             <button class="btn-action btn-report"
-                    (click)="descargarReporteDirecto()"
-                    [disabled]="!datosCargados || estadisticas.totalRegistros === 0">
+                    (click)="descargarInformacionCompleta()"
+                    [disabled]="!datosCargados || estadisticas.totalRegistros === 0 || descargando">
               <span class="btn-icon">📥</span>
-              <span class="btn-text">Descargar Reporte</span>
+              <span class="btn-text">
+                {{ descargando ? 'Descargando...' : 'Descargar Excel' }}
+              </span>
             </button>
           </div>
         </section>
-
       </div>
     }
   </main>

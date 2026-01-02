@@ -12,11 +12,6 @@
       <div class="spinner"></div>
       <h3>Cargando datos...</h3>
       <p>Obteniendo registros de la base de datos</p>
-      <div class="loading-progress">
-        <div class="progress-bar">
-          <div class="progress-fill"></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -41,7 +36,6 @@
           <thead>
             <tr>
               <th class="sticky-col index-col">#</th>
-
               <th *ngIf="columnasVisibles['id_salida']"
                   (click)="ordenarPor('id_salida')"
                   [class.sorted]="columnaOrden === 'id_salida'"
@@ -49,7 +43,6 @@
                 ID Salida
                 <span class="sort-icon">{{ columnaOrden === 'id_salida' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
               </th>
-
               <th *ngIf="columnasVisibles['id_entrada']"
                   (click)="ordenarPor('id_entrada')"
                   [class.sorted]="columnaOrden === 'id_entrada'"
@@ -57,16 +50,13 @@
                 ID Entrada
                 <span class="sort-icon">{{ columnaOrden === 'id_entrada' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
               </th>
-
               <th *ngIf="columnasVisibles['direccion_original']" class="wide-column">
                 Dirección
               </th>
-
               <th *ngIf="columnasVisibles['colonia']">Colonia</th>
               <th *ngIf="columnasVisibles['alcaldia_municipio']">Municipio</th>
               <th *ngIf="columnasVisibles['entidad_federativa']">Estado</th>
               <th *ngIf="columnasVisibles['codigopostal']">CP</th>
-
               <th *ngIf="columnasVisibles['latitud']"
                   (click)="ordenarPor('latitud')"
                   [class.sorted]="columnaOrden === 'latitud'"
@@ -74,7 +64,6 @@
                 Latitud
                 <span class="sort-icon">{{ columnaOrden === 'latitud' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
               </th>
-
               <th *ngIf="columnasVisibles['longitud']"
                   (click)="ordenarPor('longitud')"
                   [class.sorted]="columnaOrden === 'longitud'"
@@ -82,20 +71,15 @@
                 Longitud
                 <span class="sort-icon">{{ columnaOrden === 'longitud' ? (ordenAscendente ? '▲' : '▼') : '' }}</span>
               </th>
-
               <th *ngIf="columnasVisibles['confianza']">Confianza</th>
-
               <th class="sticky-col actions-col">Acciones</th>
             </tr>
           </thead>
-
           <tbody>
             <tr *ngFor="let item of registrosPaginaActual; let i = index">
               <td class="sticky-col index-col">{{ (paginaActual - 1) * registrosPorPagina + i + 1 }}</td>
-
               <td *ngIf="columnasVisibles['id_salida']" class="id-cell">{{ item.id_salida }}</td>
               <td *ngIf="columnasVisibles['id_entrada']" class="id-cell">{{ item.id_entrada }}</td>
-
               <td *ngIf="columnasVisibles['direccion_original']" class="address-cell">
                 <div class="address-content">
                   <div class="address-text">{{ item.direccion_original }}</div>
@@ -108,22 +92,18 @@
                   </div>
                 </div>
               </td>
-
               <td *ngIf="columnasVisibles['colonia']">{{ item.colonia }}</td>
               <td *ngIf="columnasVisibles['alcaldia_municipio']">{{ item.alcaldia_municipio }}</td>
               <td *ngIf="columnasVisibles['entidad_federativa']">{{ item.entidad_federativa }}</td>
               <td *ngIf="columnasVisibles['codigopostal']" class="text-center">{{ item.codigopostal }}</td>
-
               <td *ngIf="columnasVisibles['latitud']" class="coord-cell">
                 <span *ngIf="item.latitud" class="coord-value">{{ item.latitud | number:'1.6-6' }}</span>
                 <span *ngIf="!item.latitud" class="no-coord-text">N/A</span>
               </td>
-
               <td *ngIf="columnasVisibles['longitud']" class="coord-cell">
                 <span *ngIf="item.longitud" class="coord-value">{{ item.longitud | number:'1.6-6' }}</span>
                 <span *ngIf="!item.longitud" class="no-coord-text">N/A</span>
               </td>
-
               <td *ngIf="columnasVisibles['confianza']" class="confidence-cell">
                 <div class="confidence-display">
                   <div class="confidence-bar">
@@ -132,7 +112,6 @@
                   <span class="confidence-value">{{ item.confianza_porcentaje }}</span>
                 </div>
               </td>
-
               <td class="sticky-col actions-col">
                 <div class="actions-container">
                   <button (click)="editarRegistro(item)"
@@ -140,11 +119,12 @@
                           title="Editar registro">
                     ✏️
                   </button>
-
                   <button (click)="eliminarRegistro(item)"
                           class="btn-icon-only btn-delete"
-                          title="Eliminar registro">
-                    🗑️
+                          title="Eliminar registro"
+                          [disabled]="eliminandoId === item.id_salida">
+                    <span *ngIf="eliminandoId === item.id_salida" class="spinner-mini"></span>
+                    <span *ngIf="eliminandoId !== item.id_salida">🗑️</span>
                   </button>
                 </div>
               </td>
@@ -152,21 +132,18 @@
           </tbody>
         </table>
       </div>
-
       <div class="pagination-bottom">
         <div class="pagination-info">
           Mostrando <strong>{{ calcularInicioRegistros() }}</strong> a
           <strong>{{ calcularFinRegistros() }}</strong> de
           <strong>{{ direccionesProcesadas.length }}</strong> registros
         </div>
-
         <div class="pagination-controls">
           <button (click)="cambiarPaginaTabla(paginaActual - 1)"
                   [disabled]="paginaActual === 1"
                   class="pagination-btn">
             ‹ Anterior
           </button>
-
           <div class="page-numbers">
             <span *ngFor="let pagina of obtenerArrayPaginas()"
                   (click)="cambiarPaginaTabla(pagina)"
@@ -175,7 +152,6 @@
               {{ pagina }}
             </span>
           </div>
-
           <button (click)="cambiarPaginaTabla(paginaActual + 1)"
                   [disabled]="paginaActual === totalPaginas"
                   class="pagination-btn">

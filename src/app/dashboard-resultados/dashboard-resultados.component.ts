@@ -30,6 +30,7 @@ interface ApiResponse {
   revision?: number;
   fallidos?: number;
   total?: number;
+  idLote?: number;
 }
 
 @Component({
@@ -49,6 +50,7 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
 
   estadisticas: Estadisticas = { totalRegistros: 0, exactos: 0, revision: 0, fallidos: 0 };
   calidadDatos: CalidadDatos = { alta: 0, medio: 0, bajo: 0, muyBajo: 0 };
+  calidadPorcentajes: CalidadDatos = { alta: 0, medio: 0, bajo: 0, muyBajo: 0 };
 
   isLoading = true;
   hasError = false;
@@ -57,7 +59,7 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
   today = new Date();
 
   descargando = false;
-  formatoDescarga: 'excel' | 'csv' = 'excel';
+  idLoteActual: number | null = null;
 
   private chart: Chart | null = null;
 
@@ -89,12 +91,16 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
   get porcentajeRevision(): string { return this.calcularPorcentaje(this.estadisticas.revision); }
   get porcentajeFallidos(): string { return this.calcularPorcentaje(this.estadisticas.fallidos); }
 
+  get porcentajeAlta(): number { return this.calidadPorcentajes.alta; }
+  get porcentajeMedio(): number { return this.calidadPorcentajes.medio; }
+  get porcentajeBajo(): number { return this.calidadPorcentajes.bajo; }
+  get porcentajeMuyBajo(): number { return this.calidadPorcentajes.muyBajo; }
+
   ngOnInit(): void {
     this.cargarEstadisticas();
   }
 
-  ngAfterViewInit(): void {
-  }
+  ngAfterViewInit(): void {}
 
   ngOnDestroy(): void {
     this.cleanup();
@@ -127,7 +133,7 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
     });
   }
 
-  descargarReporteDirecto(): void {
+  descargarInformacionCompleta(): void {
     if (!this.datosCargados || this.estadisticas.totalRegistros === 0) {
       alert('No hay datos para descargar');
       return;
@@ -136,61 +142,57 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
     if (this.descargando) return;
 
     this.descargando = true;
+    this.cdRef.detectChanges();
 
-    this.http.get<any>('http://localhost:3000/api/lotes/disponibles')
-      .subscribe({
-        next: (response: any) => {
-          if (response.success && response.lotes && response.lotes.length > 0) {
-            const ultimoLote = response.lotes[0];
-            const idLote = ultimoLote.id_lote;
+    const url = `http://localhost:3000/api/descargar/informacion-completa?formato=excel`;
 
-            this.descargarReporte(idLote);
-          } else {
-            alert('No hay lotes disponibles para descargar');
-            this.descargando = false;
-          }
-        },
-        error: (error: Error) => {
-          alert(`❌ Error al obtener lotes: ${error.message}`);
-          this.descargando = false;
-        }
-      });
-  }
-
-  private descargarReporte(idLote: number): void {
-    this.http.get(`http://localhost:3000/api/lotes/${idLote}/descargar?formato=${this.formatoDescarga}`, {
+    this.http.get(url, {
       responseType: 'blob'
     })
       .subscribe({
         next: (blob: Blob) => {
-          const extension = this.getExtension(this.formatoDescarga);
-          const nombreArchivo = `reporte-lote-${idLote}-${new Date().toISOString().slice(0, 10)}.${extension}`;
+          const fecha = new Date().toISOString().slice(0, 10);
+          const nombreArchivo = `informacion-completa-${fecha}.xlsx`;
 
-          const url = window.URL.createObjectURL(blob);
+          const urlDescarga = window.URL.createObjectURL(blob);
           const link = document.createElement('a');
-          link.href = url;
+          link.href = urlDescarga;
           link.download = nombreArchivo;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
+          window.URL.revokeObjectURL(urlDescarga);
 
-          alert(`✅ Reporte "${nombreArchivo}" se descargó exitosamente.`);
           this.descargando = false;
+          this.cdRef.detectChanges();
         },
-        error: (error: Error) => {
-          alert(`❌ Error al descargar el reporte: ${error.message}`);
+        error: (error: any) => {
+          let mensajeError = 'Error al descargar el reporte';
+          if (error.status === 404) {
+            mensajeError = 'El servicio de reportes no está disponible. Verifica la URL del endpoint.';
+          } else if (error.status === 500) {
+            mensajeError = 'Error interno del servidor al generar el reporte completo';
+          } else if (error.error instanceof Blob) {
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                const errorJson = JSON.parse(reader.result as string);
+                mensajeError = errorJson.error || errorJson.detalle || mensajeError;
+              } catch {
+                mensajeError = 'Error al procesar la respuesta del servidor';
+              }
+              alert(mensajeError);
+            };
+            reader.readAsText(error.error);
+          } else if (error.message) {
+            mensajeError = error.message;
+            alert(mensajeError);
+          }
+
           this.descargando = false;
+          this.cdRef.detectChanges();
         }
       });
-  }
-
-  private getExtension(formato: string): string {
-    switch (formato) {
-      case 'excel': return 'xlsx';
-      case 'csv': return 'csv';
-      default: return 'xlsx';
-    }
   }
 
   private procesarRespuesta(data: ApiResponse): void {
@@ -198,6 +200,11 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
       this.mostrarSinDatos();
     } else {
       this.procesarDatos(data);
+
+      if (data.idLote) {
+        this.idLoteActual = data.idLote;
+      }
+
       this.datosCargados = true;
       setTimeout(() => this.inicializarGrafica(), 100);
     }
@@ -207,7 +214,6 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
   }
 
   private manejarError(error: Error): void {
-    console.error('❌ Error:', error);
     this.hasError = true;
     this.errorMessage = error.message || 'Error al conectar con el servidor';
     this.isLoading = false;
@@ -247,22 +253,53 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
           fallidos: datos.fallidos || 0
         };
 
-        this.calidadDatos = datos.calidad
-          ? { ...datos.calidad }
-          : this.calcularCalidadDesdeTotales();
+        this.calcularPorcentajesCalidad(datos);
 
       } else if (datos.estadisticas) {
         this.estadisticas = { ...datos.estadisticas };
-        this.calidadDatos = datos.calidad
-          ? { ...datos.calidad }
-          : this.calcularCalidadDesdeTotales();
+        this.calcularPorcentajesCalidad(datos);
       } else {
         this.mostrarSinDatos();
       }
     } catch (error) {
-      console.error('💥 Error procesando datos:', error);
       this.mostrarSinDatos();
     }
+  }
+
+  private calcularPorcentajesCalidad(datos: any): void {
+    const total = this.estadisticas.totalRegistros || 1;
+
+    if (datos.calidad) {
+      this.calidadDatos = { ...datos.calidad };
+
+      this.calidadPorcentajes = {
+        alta: total > 0 ? (this.calidadDatos.alta / total) * 100 : 0,
+        medio: total > 0 ? (this.calidadDatos.medio / total) * 100 : 0,
+        bajo: total > 0 ? (this.calidadDatos.bajo / total) * 100 : 0,
+        muyBajo: total > 0 ? (this.calidadDatos.muyBajo / total) * 100 : 0
+      };
+    } else {
+      this.calcularCalidadDesdeTotales(total);
+    }
+  }
+
+  private calcularCalidadDesdeTotales(total: number): void {
+    const revisionMedio = this.estadisticas.revision * 0.5;
+    const revisionBajo = this.estadisticas.revision * 0.5;
+
+    this.calidadDatos = {
+      alta: this.estadisticas.exactos,
+      medio: Math.round(revisionMedio),
+      bajo: Math.round(revisionBajo),
+      muyBajo: this.estadisticas.fallidos
+    };
+
+    this.calidadPorcentajes = {
+      alta: total > 0 ? (this.calidadDatos.alta / total) * 100 : 0,
+      medio: total > 0 ? (this.calidadDatos.medio / total) * 100 : 0,
+      bajo: total > 0 ? (this.calidadDatos.bajo / total) * 100 : 0,
+      muyBajo: total > 0 ? (this.calidadDatos.muyBajo / total) * 100 : 0
+    };
   }
 
   private inicializarGrafica(): void {
@@ -287,37 +324,24 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
         data: this.obtenerDatosGrafica(),
         options: this.CHART_OPTIONS
       });
-    } catch (error) {
-      console.error('💥 Error creando gráfica:', error);
-    }
+    } catch (error) {}
   }
 
   private obtenerDatosGrafica() {
     return {
       labels: [
-        `Alta ${this.calidadDatos.alta.toFixed(1)}%`,
-        `Medio ${this.calidadDatos.medio.toFixed(1)}%`,
-        `Bajo ${this.calidadDatos.bajo.toFixed(1)}%`,
-        `Muy Bajo ${this.calidadDatos.muyBajo.toFixed(1)}%`
+        `Alta (${this.porcentajeAlta.toFixed(1)}%)`,
+        `Medio (${this.porcentajeMedio.toFixed(1)}%)`,
+        `Bajo (${this.porcentajeBajo.toFixed(1)}%)`,
+        `Muy Bajo (${this.porcentajeMuyBajo.toFixed(1)}%)`
       ],
       datasets: [{
-        data: Object.values(this.calidadDatos),
+        data: [this.porcentajeAlta, this.porcentajeMedio, this.porcentajeBajo, this.porcentajeMuyBajo],
         backgroundColor: this.COLORS,
         borderColor: '#FFFFFF',
         borderWidth: 3,
         hoverOffset: 15
       }]
-    };
-  }
-
-  private calcularCalidadDesdeTotales(): CalidadDatos {
-    const total = this.estadisticas.totalRegistros || 1;
-
-    return {
-      alta: total > 0 ? (this.estadisticas.exactos / total) * 100 : 0,
-      medio: total > 0 ? (this.estadisticas.revision / 2 / total) * 100 : 0,
-      bajo: total > 0 ? (this.estadisticas.revision / 2 / total) * 100 : 0,
-      muyBajo: total > 0 ? (this.estadisticas.fallidos / total) * 100 : 0
     };
   }
 
@@ -331,13 +355,16 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
   private mostrarMensajeGraficaVacia(): void {
     const chartContainer = document.querySelector('.chart-container');
     if (chartContainer) {
-      chartContainer.innerHTML = `
-        <div class="empty-chart-message">
-          <div class="empty-icon">📊</div>
-          <h4>No hay datos para mostrar</h4>
-          <p>La base de datos está vacía o no hay registros procesados</p>
-        </div>
-      `;
+      const emptyChart = chartContainer.querySelector('.empty-chart');
+      if (!emptyChart) {
+        chartContainer.innerHTML = `
+          <div class="empty-chart">
+            <div class="empty-icon">📊</div>
+            <h4>No hay datos para mostrar</h4>
+            <p>La base de datos está vacía o no hay registros procesados</p>
+          </div>
+        `;
+      }
     }
   }
 
@@ -349,6 +376,7 @@ export class DashboardResultadosComponent implements OnInit, AfterViewInit, OnDe
   private resetDatos(): void {
     this.estadisticas = { totalRegistros: 0, exactos: 0, revision: 0, fallidos: 0 };
     this.calidadDatos = { alta: 0, medio: 0, bajo: 0, muyBajo: 0 };
+    this.calidadPorcentajes = { alta: 0, medio: 0, bajo: 0, muyBajo: 0 };
     this.destruirGrafica();
   }
 

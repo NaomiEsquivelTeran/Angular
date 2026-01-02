@@ -36,6 +36,15 @@ export interface EstadisticasVisor {
   obtenidos?: number;
 }
 
+export interface FiltrosVisor {
+  calidad_minima?: number;
+  calidad_maxima?: number;
+  municipio?: string;
+  estado?: string;
+  colonia?: string;
+  limite?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -44,99 +53,78 @@ export class GeocodificadorService {
 
   constructor(private http: HttpClient) { }
 
-  // CORREGIDO: Función principal para obtener coordenadas con parámetros corregidos
-  obtenerCoordenadasVisor(filtros: any = {}): Observable<any> {
-    // Crear HttpParams con los nombres correctos que espera el backend
+  obtenerCoordenadasVisor(filtros: FiltrosVisor = {}): Observable<any> {
     let params = new HttpParams();
 
-    // Usar calidad_minima (no cal._) - este es el nombre que tu backend espera
     if (filtros.calidad_minima !== undefined && filtros.calidad_minima !== null) {
       params = params.set('calidad_minima', filtros.calidad_minima.toString());
     } else {
-      params = params.set('calidad_minima', '0'); // Valor por defecto
+      params = params.set('calidad_minima', '0');
     }
 
     if (filtros.calidad_maxima !== undefined && filtros.calidad_maxima !== null) {
       params = params.set('calidad_maxima', filtros.calidad_maxima.toString());
     } else {
-      params = params.set('calidad_maxima', '100'); // Valor por defecto
+      params = params.set('calidad_maxima', '100');
     }
 
-    if (filtros.municipio) {
-      params = params.set('municipio', filtros.municipio);
+    if (filtros.municipio && filtros.municipio.trim() !== '') {
+      params = params.set('municipio', filtros.municipio.trim());
     }
 
-    if (filtros.estado) {
-      params = params.set('estado', filtros.estado);
+    if (filtros.estado && filtros.estado.trim() !== '') {
+      params = params.set('estado', filtros.estado.trim());
     }
 
-    if (filtros.colonia) {
-      params = params.set('colonia', filtros.colonia);
+    if (filtros.colonia && filtros.colonia.trim() !== '') {
+      params = params.set('colonia', filtros.colonia.trim());
     }
 
-    // Limitar solo si se especifica explícitamente
     if (filtros.limite && filtros.limite > 0) {
       params = params.set('limite', filtros.limite.toString());
     }
 
-    // Para diagnóstico, mostrar la URL que se está llamando
     const url = `${this.apiUrl}/visor/coordenadas`;
-    console.log('🔍 Llamando al backend:', url);
-    console.log('📤 Parámetros:', params.toString());
 
-    // URL CORREGIDA: /visor/coordenadas en lugar de /geocodificador/vison
     return this.http.get<any>(url, { params })
       .pipe(
-        timeout(120000), // Aumentado a 2 minutos para grandes consultas
+        timeout(120000),
         catchError(error => {
-          console.error('❌ Error en servicio de coordenadas:', error);
           return throwError(() => error);
         })
       );
   }
 
-  // CORREGIDO: Esta ruta debe ser /visor/buscar-mapa según tu backend
   buscarDirecciones(termino: string): Observable<any> {
     if (!termino || termino.length < 3) {
       return throwError(() => new Error('El término debe tener al menos 3 caracteres'));
     }
 
-    // URL CORREGIDA: /visor/buscar-mapa
     return this.http.get<any>(`${this.apiUrl}/visor/buscar-mapa`, {
       params: { termino }
     }).pipe(
       timeout(30000),
       catchError(error => {
-        console.error('Error buscando direcciones:', error);
         return throwError(() => error);
       })
     );
   }
 
-  // CORREGIDO: Esta ruta debe ser /visor/estadisticas-calidad
   obtenerEstadisticasCalidad(): Observable<any> {
-    // URL CORREGIDA: /visor/estadisticas-calidad
     return this.http.get<any>(`${this.apiUrl}/visor/estadisticas-calidad`)
       .pipe(
         timeout(30000),
         catchError(error => {
-          console.error('Error obteniendo estadísticas:', error);
           return throwError(() => error);
         })
       );
   }
 
-  // Método para diagnóstico
   obtenerTodasCoordenadas(): Observable<any> {
-    const params = new HttpParams()
-      .set('calidad_minima', '0')
-      .set('calidad_maxima', '100');
-
-    return this.http.get<any>(`${this.apiUrl}/visor/coordenadas`, { params })
+    return this.http.get<any>(`${this.apiUrl}/visor/coordenadas`)
       .pipe(
         timeout(120000),
         catchError(error => {
-          console.error('Error diagnóstico:', error);
           return throwError(() => error);
         })
       );

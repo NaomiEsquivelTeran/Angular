@@ -2,16 +2,12 @@
   <header class="visor-header">
     <div class="header-content">
       <h1>GEOCODIFICADOR - VISOR GEOGRÁFICO</h1>
-
     </div>
   </header>
 
   <div class="visor-main">
-    <!-- Mapa Principal -->
     <main class="area-mapa">
-      <!-- Contenedor del mapa - ESTE ES EL DIV QUE LEAFLET USARÁ -->
       <div id="mapContainer" class="contenedor-mapa">
-        <!-- Estado de carga -->
         <div *ngIf="isLoading" class="estado-carga">
           <div class="spinner"></div>
           <p>Cargando mapa...</p>
@@ -20,11 +16,10 @@
       </div>
     </main>
 
-    <!-- Panel Lateral Derecho -->
     <aside class="panel-derecho">
       <section class="seccion-filtros">
         <div class="encabezado-seccion">
-          <h3 class="titulo-seccion">Filtros de Calidad</h3>
+          <h3 class="titulo-seccion">Filtros</h3>
           <div class="acciones-filtros">
             <button class="btn-accion" (click)="seleccionarTodos()">Todos</button>
             <button class="btn-accion" (click)="deseleccionarTodos()">Ninguno</button>
@@ -38,8 +33,15 @@
                      (change)="alternarFiltro(filtro.nivel)"
                      class="checkbox-filtro">
               <span class="indicador-color" [style.backgroundColor]="filtro.color"></span>
-              <span class="texto-filtro">{{ filtro.nivel }} ({{ filtro.rango }})</span>
-              <span class="contador-filtro">{{ filtro.cantidad }}</span>
+              <span class="texto-filtro">
+                {{ filtro.nivel }} ({{ filtro.rango }})
+                <span *ngIf="filtro.cantidad > 0" class="contador-detalle">
+                  : <strong>{{ filtro.cantidad }}</strong>
+                  <span *ngIf="filtro.porcentaje > 0" class="porcentaje-filtro">
+                    ({{ filtro.porcentaje }}%)
+                  </span>
+                </span>
+              </span>
             </label>
           </div>
         </div>

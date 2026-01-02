@@ -1,12 +1,9 @@
-<!-- src/app/app.component.html -->
 <div class="app-container">
-  <!-- El panel lateral siempre visible -->
   <app-panel-lateral
     [isOpen]="true"
     (closed)="closeSidebar()">
   </app-panel-lateral>
 
-  <!-- Área de contenido donde se cargan las páginas -->
   <div class="main-content">
     <router-outlet></router-outlet>
   </div>
